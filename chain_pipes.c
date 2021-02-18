@@ -26,29 +26,29 @@
 
 int exec_seria(char* commands[], char* params[], int size){
 
-  fprintf(stderr,"connect %d for command %s ", size, commands[0]);
+  fprintf(stderr,"connect size %d for command %s %s", size, commands[0], params[0]);
   int fd[MAX_COMM][2];  
    //pipe (fd); /* Create an unnamed pipe */ 
   int pid[MAX_COMM];
 
-  if(size==1) {
+  if(size==0) {
     DO_OR_DIE(pipe(fd[0]), "Pipe 0 error");
     close (fd[0][READ]); /* Close unused end */
 
     int file1 = open(OUTFILE, O_WRONLY | O_CREAT|O_TRUNC, S_IRUSR | S_IWUSR);
 
-     dup2 (fd[0][WRITE],STDOUT_FILENO); /* Duplicate used end to stdout */ 
+     //dup2 (fd[0][WRITE],STDOUT_FILENO); /* Duplicate used end to stdout */ 
      dup2 (file1, STDOUT_FILENO); /* Duplicate used end to file */ 
      close (fd[0][WRITE]); /* Close original used end */
      close(file1);
-     close(STDOUT_FILENO);
+     //close(STDOUT_FILENO);
      close(STDIN_FILENO);
-#if 0 //DEBUG
-     fprintf(stderr, "connect1 %d %d",fd[0][0], fd[0][1] ); 
+#if DEBUG
+     fprintf(stderr, "connect1 %d %d %s %s",fd[0][0], fd[0][1], commands[0], params[0] ); 
 #endif
 
    /* Execute program */ 
-     DO_OR_DIE(execlp (commands[0], commands[0], params[0], NULL),
+     DO_OR_DIE(execlp (commands[0], params[0], NULL),
                  " The only command not works "); 
      return 0;
   }
@@ -239,9 +239,9 @@ int main(){
  strcpy(token[counter],buf);
  token[counter++][size]= '\0'; 
  
- //printf("c=%d %d",counter,size);
+ printf("c=%d %d",counter,size);
 for(int i=0;i<counter;++i){
-  //printf("\ni=%d %s (%zu)",i,token[i],strlen(token[i]));
+  printf("\ni=%d %s (%zu)",i,token[i],strlen(token[i]));
   
   int start=0;
   while(isspace(token[i][start])) start++;
@@ -253,7 +253,7 @@ for(int i=0;i<counter;++i){
 
   int end = strlen(token[i])-1;
   while(!isalnum(token[i][end])) end--;
-
+  end++;
   coms[i] = (char*) malloc(alp-start+1);
 
 
@@ -264,9 +264,10 @@ for(int i=0;i<counter;++i){
 
   pars[i] = NULL;// =(char*) malloc(strlen(coms[i]));
   //strcpy(pars[i],coms[i]);
- // printf("\n %d %d %d",start, alp, end);
-  if(end>alp+1){
-  pars[i] = (char*) realloc(pars[i],end-alp+1);
+  printf("\n before %d %d %d",start, alp, end);
+  if(end>=alp){
+  printf("\n afterst= %d %d %d",start, alp, end);
+  pars[i] = (char*) malloc(end-alp+1);
   for(int m=alp+1;m<=end;++m){
    pars[i][m-alp-1] = token[i][m];
   }
@@ -274,7 +275,7 @@ for(int i=0;i<counter;++i){
  }
 
   printf("com= %s (%zu)\n",coms[i],strlen(coms[i]));
-  if(pars[i]) printf(" %s (%zu)\n",pars[i],strlen(pars[i]));
+  if(pars[i]) printf(" p=%s (%zu)\n",pars[i],strlen(pars[i]));
 
 }
 
@@ -284,7 +285,7 @@ for(int i=0;i<counter;++i){
 for(int i=0;i<counter;++i){
    free(token[i]);
    free(coms[i]);
-   free(pars[i]);
+   if(pars[i])free(pars[i]);
 }
 #endif
 
