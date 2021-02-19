@@ -10,7 +10,7 @@
   
 int main() 
 { 
-    int fd1; 
+    int fd1,fd2; 
   
     // FIFO file path 
     char myfifo1[20] = "/home/box/in.fifo"; 
@@ -23,25 +23,20 @@ int main()
     // mkfifo(<pathname>,<permission>) 
     mkfifo(myfifo1, 0666); 
   
-    mkfifo(myfifo1, 0666); 
+    mkfifo(myfifo2, 0666); 
 
+   fd1 = open(myfifo1,O_RDONLY); 
+   fd2 = open(myfifo2,O_WRONLY); 
     char str1[255]; 
-    while (1) 
-    { 
-        // First open in read only and read 
-        fd1 = open(myfifo1,O_RDONLY); 
-        read(fd1, str1, 255); 
-  
-        // Print the read string and close 
-        fprintf(stderr, "User1: %s\n", str1); 
-        close(fd1); 
-  
-        // Now open in write mode and write 
-        fd2 = open(myfifo2,O_WRONLY); 
-        //fgets(str2, 80, stdin); 
-        write(fd2, str1, strlen(str1)+1); 
-        close(fd2); 
-    } 
+   
+  int len=0;
+  while(1){
+    len = read(pipe_in, &buf, sizeof(buf));
+    write(pipe_out, &buf, len);
+   }
+
+   close(fd1);
+   close(fd2);
     return 0; 
 } 
 
