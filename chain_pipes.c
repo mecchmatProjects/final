@@ -18,7 +18,7 @@
     } \
 } while (0)
 
-#define OUTFILE "outfile.txt" //"home/box/result.out"
+#define OUTFILE "outfile1.txt" //"home/box/result.out"
 
 #define MAX_COMM 20
 
@@ -35,20 +35,21 @@ int exec_seria(char* commands[], char* params[], int size){
     DO_OR_DIE(pipe(fd[0]), "Pipe 0 error");
     close (fd[0][READ]); /* Close unused end */
 
-    int file1 = open(OUTFILE, O_WRONLY | O_CREAT|O_TRUNC, S_IRUSR | S_IWUSR);
 
-     //dup2 (fd[0][WRITE],STDOUT_FILENO); /* Duplicate used end to stdout */ 
+
+     dup2 (fd[0][WRITE],STDOUT_FILENO); /* Duplicate used end to stdout */
+    int file1 = open(OUTFILE, O_WRONLY | O_CREAT|O_TRUNC, S_IRUSR | S_IWUSR); 
      dup2 (file1, STDOUT_FILENO); /* Duplicate used end to file */ 
      close (fd[0][WRITE]); /* Close original used end */
      close(file1);
      //close(STDOUT_FILENO);
-     close(STDIN_FILENO);
+     //close(STDIN_FILENO);
 #if DEBUG
      fprintf(stderr, "connect1 %d %d %s %s",fd[0][0], fd[0][1], commands[0], params[0] ); 
 #endif
 
    /* Execute program */ 
-     DO_OR_DIE(execlp (commands[0], params[0], NULL),
+     DO_OR_DIE(execlp (commands[0], commands[0], params[0], NULL),
                  " The only command not works "); 
      return 0;
   }
@@ -66,7 +67,10 @@ int exec_seria(char* commands[], char* params[], int size){
      dup2 (fd[0][WRITE],STDOUT_FILENO); /* Duplicate used end to stdout */ 
 
 #if DEBUG
-     int file1 = open("outfile000.txt", O_WRONLY | O_CREAT|O_TRUNC, S_IRUSR | S_IWUSR);
+     char buf[20];
+     if(size==1) strcpy(buf,OUTFILE);
+     else strcpy(buf, "outfile000.txt");
+     int file1 = open(buf, O_WRONLY | O_CREAT|O_TRUNC, S_IRUSR | S_IWUSR);
      dup2 (file1,STDOUT_FILENO); /* Duplicate used end to stdout */ 
      close(file1);
      fprintf(stderr, "connect0 %d %d %s\n",fd[0][0], fd[0][1], commands[0]); 
@@ -223,7 +227,7 @@ int main(){
    int size = 0;
    for(int i=0;i<strlen(cmd);++i){
       if(cmd[i]=='|'){
-          buf[++size] = '\0';
+          buf[size] = '\0';
           token[counter] = (char*) malloc(size);
           strcpy(token[counter],buf);
           size=0;
@@ -234,7 +238,7 @@ int main(){
     }
    }   
 
- buf[++size] = '\0';
+ buf[size] = '\0';
  token[counter] = (char*) malloc(size+1);
  strcpy(token[counter],buf);
  token[counter++][size]= '\0'; 
@@ -253,7 +257,7 @@ for(int i=0;i<counter;++i){
 
   int end = strlen(token[i])-1;
   while(!isalnum(token[i][end])) end--;
-  end++;
+  //end++;
   coms[i] = (char*) malloc(alp-start+1);
 
 
@@ -265,13 +269,13 @@ for(int i=0;i<counter;++i){
   pars[i] = NULL;// =(char*) malloc(strlen(coms[i]));
   //strcpy(pars[i],coms[i]);
   printf("\n before %d %d %d",start, alp, end);
-  if(end>=alp){
+  if(end>alp){
   printf("\n afterst= %d %d %d",start, alp, end);
   pars[i] = (char*) malloc(end-alp+1);
   for(int m=alp+1;m<=end;++m){
    pars[i][m-alp-1] = token[i][m];
   }
-  pars[i][end-alp+1] ='\0';
+  pars[i][end-alp] ='\0';
  }
 
   printf("com= %s (%zu)\n",coms[i],strlen(coms[i]));
