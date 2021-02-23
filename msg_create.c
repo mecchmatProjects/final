@@ -46,7 +46,7 @@ int main(){
             perror("msgrcv");
             exit(1);
         }
-       printf("%s\n",buf.mtext);
+       printf("%s\0\n",buf.mtext);
        fprintf(fp,"%s", buf.mtext);
        fclose(fp);
   //  }
