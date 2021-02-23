@@ -24,7 +24,7 @@ void main () {
   char buf[MSG_SIZE];              // A good-sized buffer
   unsigned int prio;               // Priority 
 
-  char fname[] = "home/box/message.txt";
+  char fname[] = "/home/box/message.txt";
     
   // Open a queue with the attribute structure
   mqdes = mq_open ("/test.mq", O_RDWR | O_CREAT, 
