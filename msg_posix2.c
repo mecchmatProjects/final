@@ -7,7 +7,7 @@
 #include <sys/types.h>
 
 
-#define MSG_SIZE       4096
+#define MSG_SIZE       255
 
 // This handler will be called when the queue 
 // becomes non-empty.
@@ -25,6 +25,11 @@ void main () {
   unsigned int prio;               // Priority 
 
   char fname[] = "/home/box/message.txt";
+
+ // First we need to set up the attribute structure
+  attr.mq_maxmsg = 300;
+  attr.mq_msgsize = MSG_SIZE;
+  attr.mq_flags = 0;
     
   // Open a queue with the attribute structure
   mqdes = mq_open ("/test.mq", O_RDWR | O_CREAT, 
@@ -39,8 +44,8 @@ void main () {
   printf ("%ld messages are currently on the queue.\n", 
           attr.mq_curmsgs);
 
-  if (attr.mq_curmsgs != 0) {
-    
+  //if (attr.mq_curmsgs != 0) {
+  while(1){  
     // There are some messages on this queue....eat em
     
     // First set the queue to not block any calls    
@@ -49,19 +54,20 @@ void main () {
         
     fp = fopen(fname,"wt"); 
      int rc = mq_receive (mqdes, &buf[0], MSG_SIZE, &prio);
-        if ( rc!= -1) 
+        if ( rc!= -1){ 
              printf ("Received a message with priority %d.\n", prio);
+            
+        }
+        else{
+           continue;
+        }
             
        printf("%s\n",buf.mtext);
        buf.mtext[rc] ='\0';
        fprintf(fp,"%s\n", buf.mtext);
        fclose(fp);
         
-    // The call failed.  Make sure errno is EAGAIN
-    if (errno != EAGAIN) { 
-      perror ("mq_receive()");
-      _exit (EXIT_FAILURE);
-    }
+    
         
     // Now restore the attributes
    // mq_setattr (mqdes, &old_attr, 0);            
@@ -71,7 +77,7 @@ void main () {
 
   // Close all open message queue descriptors    
   mq_close (mqdes);
-  
+  mq_unlink ("/test.mq");
 }
 
 
