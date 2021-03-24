@@ -198,8 +198,8 @@ void process_slave_socket(int slave_socket)
             // think not the best solution
             offset = sendfile(slave_socket, fd, &offset, sz - offset);
         }*/
-       // off_t offset = 0;
-       // sendfile(slave_socket, fd, &offset, sz - offset);
+        off_t offset = 0;
+        sendfile(slave_socket, fd, &offset, sz - offset);
        //ssize_t send_ret = send(slave_socket, reply, strlen(reply), MSG_NOSIGNAL);
         close(fd);
     }
