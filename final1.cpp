@@ -190,14 +190,16 @@ void process_slave_socket(int slave_socket)
         std::cout << "do_work: send return " << send_ret << std::endl;
 #   endif
 
-       /*
+       
             //fsdfsdf
-         off_t offset = 0;
-        while (offset < sz)
+        /*off_t offset = 0;
+        while (offset < sz-1)
         {
             // think not the best solution
             offset = sendfile(slave_socket, fd, &offset, sz - offset);
         }*/
+        off_t offset = 0;
+        sendfile(slave_socket, fd, &offset, sz - offset);
 
         close(fd);
     }
