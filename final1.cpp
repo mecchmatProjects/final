@@ -199,14 +199,19 @@ void process_slave_socket(int slave_socket)
         int fd = open(full_path.c_str(), O_RDONLY);
         int sz = lseek(fd, 0, SEEK_END);
 
+        char str[1025];
+   
+        int res = read(fd, str, sz);
+  
         sprintf(reply, "HTTP/1.0 200 OK\r\n"
                        "Content-length: %d\r\n"
                        "Connection: close\r\n"
                        "Content-Type: text/html\r\n"
-                        "\r\n"
-                       , sz);
+                       "\r\n"
+                       "%s"   
+                       , sz, str);
 
-        //ssize_t send_ret = send(slave_socket, reply, strlen(reply), MSG_NOSIGNAL);
+        ssize_t send_ret = send(slave_socket, reply, strlen(reply), MSG_NOSIGNAL);
 
 #   ifdef HTTP_DEBUG
      //   std::cout << "do_work: send return " << send_ret << std::endl;
@@ -225,11 +230,11 @@ void process_slave_socket(int slave_socket)
         //off_t offset = 0;
         //sendfile(slave_socket, fd, &offset, sz - offset);
        //ssize_t send_ret = send(slave_socket, reply, strlen(reply), MSG_NOSIGNAL);
-       int len = strlen(reply);
+     /*  int len = strlen(reply);
        if (sendall(slave_socket, reply, &len) == -1) {
          perror("sendall");
          printf("We only sent %d bytes because of the error!\n", len);
-       }
+       }*/
         close(fd);
     }
     else
