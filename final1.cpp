@@ -30,7 +30,7 @@ target_link_libraries(${PROJECT_NAME} ev pthread)
 #include <ev.h>
 
 // Debug mode, a lot of debug print to std::cout
-//#define HTTP_DEBUG
+#define HTTP_DEBUG
 
 // send fd
 ssize_t sock_fd_write(int sock, void *buf, ssize_t buflen, int fd);
@@ -92,12 +92,14 @@ void extract_path_from_http_get_request(std::string& path, const char* buf, ssiz
     std::size_t pos1 = 4;
 
     std::size_t pos2 = request.find(s2, 4);
-    if (pos2 == std::string::npos)
-    {
+    if (pos2 == std::string::npos) {
         pos2 = request.find(s1, 4);
     }
 
     path = request.substr(4, pos2 - 4);
+#ifdef HTTP_DEBUG
+    std::cout << "path " << path << std::endl;
+#endif
 }
 
 
@@ -140,6 +142,25 @@ void slave_send_to_worker(struct ev_loop *loop, struct ev_io *w, int revents)
     safe_push_back(slave_socket);
 }
 
+
+int sendall(int s, char *buf, int *len){
+	int total = 0;
+	int bytesleft = *len;
+	int n=-1;
+	// сколько байт мы послали
+	// сколько байт осталось послать
+	while(total < *len) {
+		n = send(s, buf+total, bytesleft, 0);
+		if (n == -1) { break; }
+		total += n;
+		bytesleft -= n;
+	}
+	*len = total; // здесь количество действительно посланных байт
+       return n==-1?-1:0; // вернуть -1 при сбое, 0 при успехе
+}
+
+
+
 void process_slave_socket(int slave_socket)
 {
     // recv from slave socket
@@ -178,13 +199,14 @@ void process_slave_socket(int slave_socket)
         int fd = open(full_path.c_str(), O_RDONLY);
         int sz = lseek(fd, 0, SEEK_END);
 
-        sprintf(reply, "HTTP/1.1 200 OK\r\n"
-                       "Content-Type: text/html\r\n"
+        sprintf(reply, "HTTP/1.0 200 OK\r\n"
                        "Content-length: %d\r\n"
                        "Connection: close\r\n"
+                       "Content-Type: text/html\r\n"
+                        "\r\n"
                        , sz);
 
-        ssize_t send_ret = send(slave_socket, reply, strlen(reply), MSG_NOSIGNAL);
+        //ssize_t send_ret = send(slave_socket, reply, strlen(reply), MSG_NOSIGNAL);
 
 #   ifdef HTTP_DEBUG
         std::cout << "do_work: send return " << send_ret << std::endl;
@@ -198,14 +220,21 @@ void process_slave_socket(int slave_socket)
             // think not the best solution
             offset = sendfile(slave_socket, fd, &offset, sz - offset);
         }*/
-        off_t offset = 0;
-        sendfile(slave_socket, fd, &offset, sz - offset);
+
+
+        //off_t offset = 0;
+        //sendfile(slave_socket, fd, &offset, sz - offset);
        //ssize_t send_ret = send(slave_socket, reply, strlen(reply), MSG_NOSIGNAL);
+       int len = strlen(reply);
+       if (sendall(slave_socket, reply, &len) == -1) {
+         perror("sendall");
+         printf("We only sent %d bytes because of the error!\n", len);
+       }
         close(fd);
     }
     else
     {
-        strcpy(reply, "HTTP/1.1 404 Not Found\r\n"
+        strcpy(reply, "HTTP/1.0 404 Not Found\r\n"
                       "Content-Type: text/html\r\n"
                       "Content-length: 107\r\n"
                       "Connection: close\r\n"
