@@ -209,7 +209,7 @@ void process_slave_socket(int slave_socket)
         //ssize_t send_ret = send(slave_socket, reply, strlen(reply), MSG_NOSIGNAL);
 
 #   ifdef HTTP_DEBUG
-        std::cout << "do_work: send return " << send_ret << std::endl;
+     //   std::cout << "do_work: send return " << send_ret << std::endl;
 #   endif
 
        
