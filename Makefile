@@ -1,2 +1,2 @@
-all:
-	gcc -std=gnu99 -o /home/box/shell /home/box/chain_pipes.c  #  # /home/box/shell
+test: 
+	gcc m_file.c m_file_test.c -Wall -g -pedantic -o m_file_test 
