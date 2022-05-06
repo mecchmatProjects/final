@@ -76,14 +76,12 @@ int main(int argc, char* argv[]){
   printList(file);   
  
  
-  
-  struct mon_message *mes0 = malloc( sizeof( struct mon_message ) + sizeof( t ) );
-
+  struct mon_message *mes0 = malloc( sizeof( struct mon_message ) + sizeof(t));
   ssize_t rec0 = m_reception(file, mes0, sizeof(t), 0, O_NONBLOCK);
 
   if(rec0==0){
-    printf("first");  
-    printMessage((char*)mes0, sizeof( struct mon_message ) + sizeof( t )); 
+    printf("\nfirst: ");  
+    printMessage2(mes0); 
   }
   free(mes0);
   
@@ -93,9 +91,10 @@ int main(int argc, char* argv[]){
 
   ssize_t rec01 = m_reception(file, mes01, sizeof(t1), 0, O_NONBLOCK);
 
+   
   if(rec01==0){
-    printf("second");  
-    printMessage((char*)mes01, sizeof( struct mon_message ) + sizeof( t1 )); 
+    printf("\nsecond: ");  
+    printMessage2(mes01); 
   }
   else{
           printf("can't get second");  
@@ -105,7 +104,6 @@ int main(int argc, char* argv[]){
   
   printList(file);   
  
-   
 
 
   int dic = m_deconnexion(file);
@@ -130,7 +128,7 @@ int main(int argc, char* argv[]){
     
     
 
-#if 1    
+#if 1
 
   //basic test
   char* buf[] ={"mes1","messs2","me3", "mes4",};
@@ -252,6 +250,127 @@ int main(int argc, char* argv[]){
      printf("Destructed");      
    }  
 #endif
+
+
+
+        
+  // anonymos test         
+MESSAGE * file2 = m_connexion( NULL, O_CREAT|O_RDWR, 
+                    5, 12, 0666);
+if(!file2){
+    printf("not created file");
+}                    
+
+#if 1
+  int t3[] = {1, 2, 45}; /*valeurs à envoyer*/
+  struct mon_message *m3 = malloc( sizeof( struct mon_message ) + sizeof( t3 ) );
+
+
+   if( m3 == NULL ){
+     /* traiter erreur de malloc */ 
+     printf("Alloc error");
+     return -1;  
+    }
+    m3->type = (long) getpid(); /* comme type de message, on choisit l’identité * de l’expéditeur */
+    memmove( m3 -> mtext, t3, sizeof( t3 )) ; /* copier les deux int à envoyer */
+
+    /* send in non-blocking mode */
+   int i3 = m_envoi( file2, m3, sizeof( t3 ), O_NONBLOCK) ;
+   if( i3 == 0 ){ /* message envoyé */ 
+       printf("mesage is sent"); 
+   }
+   else if( i3 == -1 && errno == EAGAIN ){
+      /* file pleine, essayer plus tard */
+      printf(" file is full, emty it");
+   }
+   else{ /* erreur de la fonction */ 
+     printf("error");
+   }
+   
+   
+   
+  free(m3);  
+  printf("State of Int: Len(%zu), Cap(%zu), CurrentSize (%zu) \n",
+          m_message_len(file2),m_capacite(file2), m_nb(file2));
+          
+  printList(file2);   
+  
+#endif
+
+#if 0
+  int t4[] ={1,3,2,4,5};
+  struct mon_message *m4 = (struct mon_message *) malloc( sizeof( struct mon_message ) + sizeof(t4));
+  m4->type = (long) getpid(); /* comme type de message, on choisit l’identité * de l’expéditeur */
+  memmove( m4 -> mtext, t4, sizeof( t4 )) ;
+  /* send in non-blocking mode */
+ i = m_envoi( file2, m4, 12, O_NONBLOCK) ;
+   if( i == 0 ){ /* message envoyé */ 
+       printf("mesage is sent"); 
+   }
+   else if( i == -1 && errno == EAGAIN ){
+      /* file pleine, essayer plus tard */
+      printf(" file is full, emty it");
+   }
+   else{ /* erreur de la fonction */ 
+     printf("error");
+   }
+   
+  free(m4);  
+
+ 
+#endif 
+
+  printf("State of Int: Len(%zu), Cap(%zu), CurrentSize (%zu) \n",
+          m_message_len(file2),m_capacite(file2), m_nb(file2));
+          
+  printList(file2);   
+  
+
+  struct mon_message *mes03 = malloc( sizeof( struct mon_message ) + sizeof(t3));
+
+  ssize_t rec03 = m_reception(file2, mes03, sizeof(t3), 0, O_NONBLOCK);
+
+  if(rec03==0){
+    printf("\nfirst: ");  
+    printMessage2(mes03); 
+  }
+  free(mes03);
+  
+  printList(file2);   
+
+#if 0
+  struct mon_message *mes04 = malloc( sizeof( struct mon_message ) + sizeof(t3) );
+  
+
+  ssize_t rec04 = m_reception(file2, mes04, sizeof(t3), 0, O_NONBLOCK);
+
+   
+  if(rec04==0){
+    printf("\nsecond: ");  
+    printMessage2(mes04); 
+  }
+  else{
+          printf("can't get second");  
+
+    }
+  free(mes04);
+  
+  printList(file2);   
+ 
+
+
+  dic = m_deconnexion(file2);
+  if (dic!=0){ 
+     printf("Not disconnected");
+     exit(-1);
+  }
+  else{
+     printf("Disconnected");      
+  }  
+ 
+#endif    
+
+
 
   return 0;
 }

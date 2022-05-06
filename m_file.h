@@ -6,7 +6,7 @@
 
 //#include <unistd.h>
 
-
+#include <pthread.h>
 
 /*
   Structure of the mesage   
@@ -15,6 +15,13 @@ typedef struct mon_message{
    long type;  //  the type of the message
    char mtext[]; // the message array
 }mon_message;
+
+
+typedef struct MessageText{
+    long type;
+    size_t len;
+    char mtext[];
+}MessageText; 
 
 
 /*
@@ -37,6 +44,7 @@ typedef struct MESSAGE{
    int first;
    int last;
    
+   pthread_mutex_t lock;
     
 } MESSAGE;
 
