@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <sys/wait.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -13,23 +14,21 @@
 //И будут ли как-то оцениваться собственные тесты
 
 int main(int argc, char* argv[]){
-    
-        
-  // given test         
+
+   // single-thread:            
+  //1. given test         
 
   MESSAGE * file = m_connexion( "file_int", O_CREAT|O_RDWR, 
                     5, 8, 0666);
 
-
   int t[2] = {-12, 99}; /*valeurs à envoyer*/
   struct mon_message *m = malloc( sizeof( struct mon_message ) + sizeof( t ) );
 
-
-   if( m == NULL ){
+  if( m == NULL ){
      /* traiter erreur de malloc */ 
      printf("Alloc error");
      return -1;  
-    }
+   }
     m->type = (long) getpid(); /* comme type de message, on choisit l’identité * de l’expéditeur */
     memmove( m -> mtext, t, sizeof( t )) ; /* copier les deux int à envoyer */
 
@@ -75,7 +74,6 @@ int main(int argc, char* argv[]){
           
   printList(file);   
  
- 
   struct mon_message *mes0 = malloc( sizeof( struct mon_message ) + sizeof(t));
   ssize_t rec0 = m_reception(file, mes0, sizeof(t), 0, O_NONBLOCK);
 
@@ -83,6 +81,10 @@ int main(int argc, char* argv[]){
     printf("\nfirst: ");  
     printMessage2(mes0); 
   }
+  else{
+          printf("can't get first message");  
+  }
+  
   free(mes0);
   
   printList(file);   
@@ -90,22 +92,17 @@ int main(int argc, char* argv[]){
   struct mon_message *mes01 = malloc( sizeof( struct mon_message ) + sizeof(t) );
 
   ssize_t rec01 = m_reception(file, mes01, sizeof(t1), 0, O_NONBLOCK);
-
-   
   if(rec01==0){
     printf("\nsecond: ");  
     printMessage2(mes01); 
   }
   else{
-          printf("can't get second");  
-
-    }
+          printf("can't get second message");  
+  }
   free(mes01);
   
   printList(file);   
  
-
-
   int dic = m_deconnexion(file);
   if (dic!=0){ 
      printf("Not disconnected");
@@ -125,13 +122,12 @@ int main(int argc, char* argv[]){
    }  
 
     
-    
-    
 
-#if 1
+#if 1  
+printf("\n\n\n\n\n\n Char messages test\n");
 
   //basic test
-  char* buf[] ={"mes1","messs2","me3", "mes4",};
+  char* buf[] ={"mes1","messs2","me3", "mes4","m5"};
   int buf_size = sizeof(buf)/sizeof(*buf);
   
   MESSAGE * MES_BASE = m_connexion( "MES_BASE", O_CREAT|O_RDWR, 
@@ -202,43 +198,46 @@ int main(int argc, char* argv[]){
      printf("Msg=%s\n", mes2->mtext);  
   }
   
-  printf("\n\n recieve 1 mes");
+  printf("\n\n recieve 1st message:\n");
 
-   printf("Next state of MESSAGE: Len(%zu), Cap(%zu), CurrentSize (%zu)\n",
+  printf("State of MESSAGE: Len(%zu), Cap(%zu), CurrentSize (%zu)\n",
           m_message_len(MES_BASE),m_capacite(MES_BASE), m_nb(MES_BASE));
   
-   printList(MES_BASE);   
+  printList(MES_BASE);   
   
-   free(mes2);
-  printf("\n\n recieve 5 mes");
+  free(mes2);
+  
+  printf("\n\n Receive 5 messages:\n");
   
    for(int i=0;i<5;i++){
-     struct mon_message *mes3 = malloc( sizeof( struct mon_message ) + sizeof( strlen(buf[0])+1 ) );
+     struct mon_message *mes3 = malloc( sizeof( struct mon_message ) + sizeof( strlen(buf[i])+1 ) );
 
-     ssize_t rec = m_reception(MES_BASE, mes3,  strlen(buf[0])+1, 0, O_NONBLOCK);
+     printf("expected message of size %d", strlen(buf[i])+1);
+     ssize_t rec = m_reception(MES_BASE, mes3,  strlen(buf[i])+1, 0, O_NONBLOCK);
   
      if(rec<0){
-       printf("No msg received %zd",rec);
+        printf("\nNo msg received %zd\n",rec);
      }
      else{
-       printf("Msg received %zd\n",rec);
-       printf("Msg=%s\n", mes3->mtext);  
+        printf("\nMsg received %zd, ",rec);
+        printf("Msg=%s\n", mes3->mtext);  
      }
   
-     printf("Next state of MESSAGE: Len(%zu), Cap(%zu), CurrentSize (%zu)",
+     printf("State of MESSAGE: Len(%zu), Cap(%zu), CurrentSize (%zu)\n",
           m_message_len(MES_BASE),m_capacite(MES_BASE), m_nb(MES_BASE));
   
      free(mes3); 
    }
    printList(MES_BASE);   
-  
+   
+
    int dic1 = m_deconnexion(MES_BASE);
    if (dic1!=0){ 
-     printf("Not disconnected");
-     exit(-1);
+      printf("Not disconnected");
+      exit(-1);
    }
    else{
-     printf("Disconnected");      
+      printf("Disconnected");      
    }  
    
    int destr1 = m_destruction("MES_BASE");
@@ -251,17 +250,19 @@ int main(int argc, char* argv[]){
    }  
 #endif
 
+////////////////////////////      
+// anonymous test        
 
-
-        
-  // anonymos test         
+printf("\n\n\n\n\n\n Anonymous test\n");
+#if 1
+ 
 MESSAGE * file2 = m_connexion( NULL, O_CREAT|O_RDWR, 
                     5, 12, 0666);
 if(!file2){
     printf("not created file");
 }                    
 
-#if 1
+
   int t3[] = {1, 2, 45}; /*valeurs à envoyer*/
   struct mon_message *m3 = malloc( sizeof( struct mon_message ) + sizeof( t3 ) );
 
@@ -286,10 +287,8 @@ if(!file2){
    else{ /* erreur de la fonction */ 
      printf("error");
    }
-   
-   
-   
-  free(m3);  
+    
+  //free(m3);  
   printf("State of Int: Len(%zu), Cap(%zu), CurrentSize (%zu) \n",
           m_message_len(file2),m_capacite(file2), m_nb(file2));
           
@@ -297,13 +296,14 @@ if(!file2){
   
 #endif
 
-#if 0
+#if 1
   int t4[] ={1,3,2,4,5};
-  struct mon_message *m4 = (struct mon_message *) malloc( sizeof( struct mon_message ) + sizeof(t4));
-  m4->type = (long) getpid(); /* comme type de message, on choisit l’identité * de l’expéditeur */
-  memmove( m4 -> mtext, t4, sizeof( t4 )) ;
+  // Memory leak????
+  //struct mon_message *m4 = (struct mon_message *) malloc( sizeof( struct mon_message ) + sizeof(t4));
+  //m4->type = (long) getpid(); /* comme type de message, on choisit l’identité * de l’expéditeur */
+  //memmove( m4 -> mtext, t4, sizeof( t4 )) ;
   /* send in non-blocking mode */
- i = m_envoi( file2, m4, 12, O_NONBLOCK) ;
+ i = m_envoi( file2, m3, 12, O_NONBLOCK) ;
    if( i == 0 ){ /* message envoyé */ 
        printf("mesage is sent"); 
    }
@@ -315,11 +315,11 @@ if(!file2){
      printf("error");
    }
    
-  free(m4);  
+  free(m3);  
 
  
 #endif 
-
+#if 1
   printf("State of Int: Len(%zu), Cap(%zu), CurrentSize (%zu) \n",
           m_message_len(file2),m_capacite(file2), m_nb(file2));
           
@@ -338,10 +338,8 @@ if(!file2){
   
   printList(file2);   
 
-#if 0
-  struct mon_message *mes04 = malloc( sizeof( struct mon_message ) + sizeof(t3) );
-  
 
+  struct mon_message *mes04 = malloc( sizeof( struct mon_message ) + sizeof(t3) );
   ssize_t rec04 = m_reception(file2, mes04, sizeof(t3), 0, O_NONBLOCK);
 
    
@@ -356,9 +354,9 @@ if(!file2){
   free(mes04);
   
   printList(file2);   
+
+
  
-
-
   dic = m_deconnexion(file2);
   if (dic!=0){ 
      printf("Not disconnected");
@@ -367,8 +365,305 @@ if(!file2){
   else{
      printf("Disconnected");      
   }  
+  
  
-#endif    
+#endif
+
+// parallel anonymous test
+printf("\n\n\n\n\n\n Parallel Anonymous test\n");
+
+ 
+ MESSAGE * file_anon2 = m_connexion( NULL, O_CREAT|O_EXCL|O_RDWR, 
+                    3, 12, 0666);
+     
+
+  pid_t pd = fork();
+
+  if(pd==-1){
+   
+        fprintf(stderr, "fork() failed\n");
+        exit(EXIT_FAILURE);    
+  }
+  else if(pd==0){         /*Child: wreite read*/     
+     
+      printf("In child");
+      int tchild[3] = {1, 2, 45}; /*valeurs à envoyer*/
+      struct mon_message *mes_child = malloc( sizeof( struct mon_message ) + sizeof( tchild) );
+      
+      mes_child->type = (long) getpid();
+      memmove( mes_child-> mtext, tchild, sizeof( tchild )) ;               
+      
+      int i_an = m_envoi( file_anon2, mes_child, sizeof( tchild ), 0) ;
+      if( i_an == 0 ){ /* message envoyé */ 
+         printf("mesage is sent:\n"); 
+         printList(file_anon2);   
+
+      }
+      else if( i_an == -1 && errno == EAGAIN ){
+        
+         printf(" file is full, emty it");
+      }
+      else{ /* erreur de la fonction */ 
+       printf("error");
+     }
+           
+       
+      free(mes_child); 
+      printf("\nOut file:\n");
+      printList(file_anon2);   
+
+      
+      dic = m_deconnexion(file_anon2);
+      if (dic!=0){ 
+           printf("Not disconnected");
+           exit(-1);
+      }
+      else{
+           printf("Disconnected");      
+       }  
+      
+  }
+  else{         /*Parent: wait for child to terminate*/      
+       if (wait(NULL) == -1) {    
+            fprintf(stderr, "wait() failed\n");    
+            exit(EXIT_FAILURE);      
+        }     
+
+      printf("In parent");         
+      int tparent[3] = {0,}; /*valeurs à envoyer*/
+      struct mon_message *mes_parent = malloc( sizeof( struct mon_message ) + sizeof( tparent ));
+          
+      /*MESSAGE * file_anon2_1 = m_connexion( NULL, O_EXCL|O_RDONLY, 
+                    3, 12, 0666);*/
+      
+      
+      int i_an21 = m_reception( file_anon2, mes_parent, sizeof(tparent), 0, 0);
+      if( i_an21 == 0 ){ /* message envoyé */ 
+         printf("mesage is get:");
+         printMessage2(mes_parent); 
+      }
+      else if( i_an21 == -1 && errno == EAGAIN ){
+        
+         printf(" file is full, emty it");
+      }
+      else{ /* erreur de la fonction */ 
+       printf("error");
+     }
+           
+      printList(file_anon2);  
+      free(mes_parent); 
+      
+      dic = m_deconnexion(file_anon2);
+      if (dic!=0){ 
+           printf("Not disconnected");
+           exit(-1);
+      }       
+   }   
+
+
+
+// parallel non-anonymous test
+printf("\n\n\n\n\n\n Parallel Forked test\n");
+ 
+MESSAGE * file_forked = m_connexion( "forked.dat", O_CREAT|O_EXCL|O_RDWR, 
+                    3, 12, 0666);
+     
+
+  pd = fork();
+
+  if(pd==-1){
+   
+        fprintf(stderr, "fork() failed\n");
+        exit(EXIT_FAILURE);    
+  }
+  else if(pd==0){         /*Child: wreite read*/     
+     
+      printf("In child");
+      int tchild[3] = {5, 6, 7}; /*valeurs à envoyer*/
+      struct mon_message *mes_child = malloc( sizeof( struct mon_message ) + sizeof( tchild) );
+      
+      mes_child->type = (long) getpid();
+      memmove( mes_child-> mtext, tchild, sizeof( tchild )) ;               
+      
+      int i_an = m_envoi( file_forked, mes_child, sizeof( tchild ), 0) ;
+      if( i_an == 0 ){ /* message envoyé */ 
+         printf("mesage is sent:\n"); 
+         printList(file_forked);   
+
+      }
+      else if( i_an == -1 && errno == EAGAIN ){
+        
+         printf(" file is full, emty it");
+      }
+      else{ /* erreur de la fonction */ 
+       printf("error");
+     }
+           
+       
+      free(mes_child); 
+      printf("\nOut file:\n");
+      printList(file_forked);   
+
+      
+      dic = m_deconnexion(file_forked);
+      if (dic!=0){ 
+           printf("Not disconnected");
+           exit(-1);
+      }
+      else{
+           printf("Disconnected");      
+       }  
+      
+  }
+  else{         /*Parent: wait for child to terminate*/      
+       if (wait(NULL) == -1) {    
+            fprintf(stderr, "wait() failed\n");    
+            exit(EXIT_FAILURE);      
+        }     
+
+      printf("In parent");         
+      int tparent[3] = {0,}; /*valeurs à envoyer*/
+      struct mon_message *mes_parent = malloc( sizeof( struct mon_message ) + sizeof( tparent ));
+          
+      /*MESSAGE * file_anon2_1 = m_connexion( NULL, O_EXCL|O_RDONLY, 
+                    3, 12, 0666);*/
+      
+      
+      int i_an21 = m_reception( file_forked, mes_parent, sizeof(tparent), 0, 0);
+      if( i_an21 == 0 ){ /* message envoyé */ 
+         printf("mesage is get:");
+         printMessage2(mes_parent); 
+      }
+      else if( i_an21 == -1 && errno == EAGAIN ){
+        
+         printf(" file is full, emty it");
+      }
+      else{ /* erreur de la fonction */ 
+       printf("error");
+     }
+           
+      printList(file_forked);  
+      free(mes_parent); 
+      
+      dic = m_deconnexion(file_forked);
+      if (dic!=0){ 
+           printf("Not disconnected");
+           exit(-1);
+      }
+
+     int destr1 = m_destruction("forked.dat");
+     if (destr1!=0){ 
+     printf("Not destructed");
+     exit(-1);
+   }
+   else{
+     printf("Destructed");      
+   }         
+      
+   }   
+
+// parallel read by forked test
+printf("\n\n\n\n\n\n Parallel Read Forked test\n");
+ 
+  pd = fork();
+
+  if(pd==-1){
+   
+        fprintf(stderr, "fork() failed\n");
+        exit(EXIT_FAILURE);    
+  }
+  else if(pd==0){         /*Child: write read*/     
+     
+      printf("In child");
+      int tchild[3] = {8, 9, 5}; /*valeurs à envoyer*/
+      struct mon_message *mes_child = malloc( sizeof( struct mon_message ) + sizeof( tchild) );
+      
+      
+      MESSAGE * file_forked2_1 = m_connexion( "forked2.dat", O_CREAT|O_EXCL|O_RDWR, 
+                    3, 12, 0666);
+     
+      mes_child->type = (long) getpid();
+      memmove( mes_child-> mtext, tchild, sizeof( tchild )) ;               
+      
+      int i_an = m_envoi( file_forked2_1, mes_child, sizeof( tchild ), 0) ;
+      if( i_an == 0 ){ /* message envoyé */ 
+         printf("mesage is sent:\n"); 
+         printList(file_forked2_1);   
+
+      }
+      else if( i_an == -1 && errno == EAGAIN ){
+        
+         printf(" file is full, emty it");
+      }
+      else{ /* erreur de la fonction */ 
+       printf("error");
+     }
+           
+       
+      free(mes_child); 
+      printf("\nOut file:\n");
+      printList(file_forked2_1);   
+
+      
+      dic = m_deconnexion(file_forked2_1);
+      if (dic!=0){ 
+           printf("Not disconnected");
+           exit(-1);
+      }
+      else{
+           printf("Disconnected");      
+       }  
+      
+  }
+  else{         /*Parent: wait for child to terminate*/      
+       if (wait(NULL) == -1) {    
+            fprintf(stderr, "wait() failed\n");    
+            exit(EXIT_FAILURE);      
+        }     
+
+      printf("In parent");         
+      int tparent[3] = {0,}; /*valeurs à envoyer*/
+      struct mon_message *mes_parent = malloc( sizeof( struct mon_message ) + sizeof( tparent ));
+          
+      MESSAGE * file_forked2_2 = m_connexion( "forked2.dat", O_EXCL|O_RDWR, 
+                    3, 12, 0666);
+      
+      
+      int i_an21 = m_reception( file_forked2_2, mes_parent, sizeof(tparent), 0, 0);
+      if( i_an21 == 0 ){ /* message envoyé */ 
+         printf("mesage is get:");
+         printMessage2(mes_parent); 
+      }
+      else if( i_an21 == -1 && errno == EAGAIN ){
+        
+         printf(" file is full, emty it");
+      }
+      else{ /* erreur de la fonction */ 
+       printf("error");
+     }
+           
+      printList(file_forked2_2);  
+      free(mes_parent); 
+      
+      dic = m_deconnexion(file_forked2_2);
+      if (dic!=0){ 
+           printf("Not disconnected");
+           exit(-1);
+      }
+
+     int destr1 = m_destruction("forked2.dat");
+     if (destr1!=0){ 
+     printf("Not destructed");
+     exit(-1);
+   }
+   else{
+     printf("Destructed");      
+   }         
+      
+   }   
+
+
+
 
 
 

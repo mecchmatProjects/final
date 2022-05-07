@@ -58,7 +58,7 @@ typedef struct MESSAGE{
  - options:  
      If options does not contain O_CREAT, then the m_connection function will only have the two
      parameters name and options, i.e. m_connection is a variable number function
-     arguments (either 2 or 5)
+     arguments (either 2 or 5) ???????
        Constants:
      – O_RDWR, O_RDONLY, O_WRONLY, with the same meaning as for open;
         exactly one of these constants must be specified;
