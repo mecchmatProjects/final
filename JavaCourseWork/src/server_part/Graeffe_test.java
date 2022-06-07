@@ -21,10 +21,10 @@ public class Graeffe_test {
 //            coefs1[i] = sc.nextFloat();
 //        }
         List<BigDecimal> lister = new ArrayList<>();
-        double[] coefs1 = {1, -4,6, -3, 2,1};
+        double[] coefs1 = {1,1,1,1};
         for (double item : coefs1) {
             lister.add(new BigDecimal(item));
         }
-        System.out.println("Корни: " + prt(graeffe(lister)));
+        System.out.println("Roots: " + prt(graeffe(lister)));
     }
 }

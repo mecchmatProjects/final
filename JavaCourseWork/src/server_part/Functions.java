@@ -2,11 +2,53 @@ package server_part;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 public class Functions {
+
+    public static Map<String,String> readHttp(ArrayList<String> massage){
+        Map<String,String> dict = new HashMap<String,String>();
+        String[] line;
+        String header;
+        String value;
+        for (String i: massage){
+            try {
+                line = i.split("[:=] |/");
+                header = line[0];
+                value = line[1];
+                dict.put(header, value);
+            }
+            catch (Exception e){
+                dict.put(i.substring(0,i.length()-2),"");
+            }
+        }
+        return dict;
+    }
+
+
+    public static List<BigDecimal> enterPolinom(){
+        Scanner sc = new Scanner(System.in);
+        System.out.println("Enter polynomial degree: ");
+        int p_degree = sc.nextInt()+1;
+        double an;
+        List<BigDecimal> coefsList = new ArrayList<>();
+        while (true){
+            System.out.print("a"+(p_degree-1)+"= ");
+            an = sc.nextDouble();
+            if (0.0!=an){
+                break;
+            }
+            System.out.println("a"+(p_degree-1)+ " can't be zero");
+        }
+        for(int i = 1; i < p_degree; i++) {
+            System.out.print("a"+(p_degree-i-1)+"= ");
+            coefsList.add(BigDecimal.valueOf(sc.nextDouble()));
+        }
+        System.out.println();
+        return coefsList;
+    }
+
+
     public static < O > String prt(List<O> array ) {
         StringBuilder str = new StringBuilder();
         for (O obj : array) {
@@ -15,12 +57,13 @@ public class Functions {
         return str.toString();
     }
 
+
     public static ArrayList<String> graeffe(List<BigDecimal> given_coefs){
 
         int p_degree = given_coefs.size();
         List<BigDecimal> coefs = new ArrayList<>(given_coefs);
 
-        MathContext mc = new MathContext(20);
+        MathContext mc = new MathContext(50);
         RoundingMode rm = RoundingMode.HALF_UP;
 
         if (!Objects.equals(given_coefs.get(0), BigDecimal.ONE)){
@@ -31,11 +74,16 @@ public class Functions {
 
 
         List<BigDecimal> cur_coefs = new ArrayList<>(coefs);
+        List<BigDecimal> prev_coefs = new ArrayList<>(coefs);
         List<BigDecimal> squared_coefs = new ArrayList<>(coefs);
         List<BigDecimal> bks = new ArrayList<>(coefs);
 
         List<BigDecimal> prob_roots = new ArrayList<>();
         List<BigDecimal> roots = new ArrayList<>();
+
+        HashSet<BigDecimal> setRoots = new HashSet<BigDecimal>();
+
+
 
         bks.set(0,BigDecimal.valueOf(0));
         bks.set(p_degree-1,BigDecimal.valueOf(0));
@@ -43,8 +91,8 @@ public class Functions {
         BigDecimal aR;
         BigDecimal cur_bk;
         int iteration = 0;
+        for (int m=0;m<10;m++){
 
-        for(int m = 0; m < p_degree+5; m++) {
             // squared coefs
             for(int i = 0; i < p_degree; i++) {
                 squared_coefs.set(i,cur_coefs.get(i).pow(2));
@@ -66,14 +114,19 @@ public class Functions {
             for(int k = 0; k < p_degree; k++) {
                 cur_coefs.set(k, squared_coefs.get(k).add(bks.get(k)));
             }
+
+//            prev_coefs = new ArrayList<>(cur_coefs);
+//            for(int h=0;h<p_degree;h++){
+//                System.out.println(prev_coefs.get(h).pow(2).add(cur_coefs.get(h).multiply(BigDecimal.valueOf(-1))).setScale(5,rm));
+//            }
             iteration++;
         }
 
         List<BigDecimal> result_coefs = new ArrayList<>(cur_coefs);
+
         BigDecimal cur_root;
         BigDecimal cur_coef;
         BigDecimal prev_coef = BigDecimal.valueOf(1);
-
         for(int z = 1; z < p_degree; z++) {
             cur_coef = result_coefs.get(z);
             cur_root = cur_coef.divide(prev_coef, mc).abs();
@@ -83,12 +136,12 @@ public class Functions {
             prob_roots.add(cur_root);
             prev_coef = cur_coef;
         }
-
+//        System.out.println(prob_roots);
         BigDecimal prob_resultP;
         BigDecimal prob_resultN;
-        BigDecimal needed = BigDecimal.valueOf(0.0001);
+        BigDecimal needed = BigDecimal.valueOf(0.00001);
         List<BigDecimal> prob_complex = new ArrayList<>(prob_roots);
-
+//        System.out.println(prt(prob_roots));
         for (BigDecimal x: prob_roots){
             prob_resultP = BigDecimal.valueOf(0);
             prob_resultN = BigDecimal.valueOf(0);
@@ -98,19 +151,26 @@ public class Functions {
             }
 
             if (prob_resultP.setScale(3, rm).equals(needed.setScale(3, rm))){
-                roots.add(x);
-                prob_complex.remove(x.abs());
+                if (!(setRoots.contains(x.setScale(3,rm)))){
+                    roots.add(x);
+                    setRoots.add(x.setScale(3,rm));
+                    prob_complex.remove(x);
+                }
             }
             else if (prob_resultN.setScale(3, rm).equals(needed.setScale(3, rm))){
-                roots.add(x.multiply(BigDecimal.valueOf(-1)));
-                prob_complex.remove(x);
+                if (!(setRoots.contains(x.multiply(BigDecimal.valueOf(-1)).setScale(3,rm)))){
+                    setRoots.add(x.multiply(BigDecimal.valueOf(-1)).setScale(3,rm));
+                    roots.add(x.multiply(BigDecimal.valueOf(-1)));
+                    prob_complex.remove(x);
+                }
+
             }
 
         }
 
         ArrayList<String> rootsList = new ArrayList<String>();
         for (BigDecimal x: roots){rootsList.add(x.setScale(5, rm).toString()+";");}
-
+//        System.out.println("prob complex "+ prt(prob_complex));
         if (prob_complex.size()!=0){
             if (prob_complex.size() == 2){
                 BigDecimal xns = BigDecimal.valueOf(0);
@@ -173,7 +233,7 @@ public class Functions {
 
             else {
                 for (BigDecimal r: prob_complex){
-                    rootsList.add("r = "+r);
+                    rootsList.add("r("+r+")");
                 }
             }
         }
