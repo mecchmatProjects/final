@@ -51,14 +51,14 @@ void sendDataPacket(unsigned short blockNum, char blockData[], int sockfd, struc
 
 	sendto(sockfd, packet, PACKET_SIZE, 0, (struct sockaddr*)&cli_addr,
 		   sizeof(cli_addr));
-	printf("[SERVER] Sent DATA packet to server for block number: %lu\n", blockNum);
+	printf("[SERVER] Sent DATA packet to server for block number: %d\n", blockNum);
 }
 
 void processDataPacket(char buffer[], char filename[], unsigned short blockNum, int sockfd) {
 	unsigned short opCode = 4;
 	
 	FILE *fp;
-	fp = fopen(filename, "wb");
+	fp = fopen(filename, "w+t");
 
 	char dataBuf[DATA_SIZE];
 	bzero(dataBuf, sizeof(dataBuf));
@@ -108,23 +108,180 @@ void processRRQ(int sockfd, char filename[], struct sockaddr_in cli_addr) {
 	fclose(fp);
 }
 
+
+
+void text_mode_transfer(FILE * src_file, int data_sock,
+			struct sockaddr_in cli_addr)
+{
+	// incoming message buffer
+	char buffer[BUFSIZ];
+
+	// message opcode
+	uint16_t opcode;
+
+	// received message length
+	int recv_len;
+
+	// client address length
+	size_t cli_size = sizeof(cli_addr);
+
+	// single char store buffer
+	char c;
+
+	// chars counter: the first 4 bytes of the transfer buffer
+	// must be left empty for the opcode and block number
+	int i = 4;
+
+	// data transfer blocks counter
+	uint16_t block_counter = 1;
+
+	int MAX = 512;
+	// until the EOF is found in the opened file
+	do {
+		// retrieve next char from the source file
+		c = fgetc(src_file);
+
+		// avoid adding the EOF to the transfer buffer
+		if (c != EOF)
+		{
+			// copy retrieved char in the transfer buffer
+			buffer[i] = c;
+
+			// increase chars counter
+			i++;
+		}
+
+		// check if either the maximum number of chars or the
+		// EOF has been reached
+		if (i == MAX + 4 || c == EOF)
+		{
+			// if so, send the data message to the client
+			// opcode = 3 (= DATA)
+			opcode = htons(3);
+
+			// prepare block number
+			uint16_t block = htons(block_counter);
+
+			// copy opcode to the transfer buffer
+			memcpy(buffer, &opcode, 2);
+
+			// copy block_number to the transfer buffer
+			memcpy(buffer + 2, &block, 2);
+
+			// send transfer buffer to the client
+			recv_len =
+			    sendto(data_sock,
+				   buffer,
+				   i,
+				   MSG_CONFIRM,
+				   (const struct sockaddr *) &cli_addr,
+				   sizeof(cli_addr));
+
+			// check for errors
+
+			// if debugging is enabled
+			if (1)
+			{
+				// print debugging info log message
+				printf
+				    ("Data packet with block number %d sent. Waiting "
+				     "to receive ACK response.", block_counter);
+				//child_log(INFO, log_message);
+			}
+
+			// clear transfer buffer
+			memset(buffer, 0, BUFSIZ);
+
+			// wait for ACK response from the client
+			recv_len = recvfrom(data_sock, (char *)
+					    buffer,
+					    BUFSIZ,
+					    MSG_WAITALL,
+					    (struct sockaddr *) &cli_addr,
+					    (socklen_t *) & cli_size);
+
+			// check for errors
+			//check_errno(recv_len,
+			//	    "Error while receiving ACK packet.");
+
+			// retrieve block number from transfer buffer
+			memcpy(&block, (uint16_t *) & buffer[2], 2);
+
+			// deserialize block number
+			block = ntohs(block);
+
+			// if debugging is enabled
+			if (1)
+			{
+				// print debugging info log message
+				printf
+				    ("ACK response received for block number: %d.", block);
+				//child_log(INFO, log_message);
+			}
+
+			// before sending next data message, check ack message block number
+			if (block != block_counter)
+			{
+				// print a warning error log
+				//child_log(ERROR,
+				//	  "Sent block number and ACK packet block number do not "
+				//	  "match. Transfer cancelled.");
+
+				// cancel tranfer, close source file
+				fclose(src_file);
+
+				// shutdown transfer socket
+				shutdown(data_sock, SHUT_RDWR);
+
+				// close transfer socket
+				close(data_sock);
+
+				// exit with error
+				//exit(-1);
+			}
+
+			// reset chars counter for new transfer
+			i = 4;
+
+			// increase block number counter
+			block_counter++;
+		}
+	}
+	while (c != EOF);
+}
+
+
+
 // TODO: fix write request
 void processWRQ(int sockfd, char filename[], struct sockaddr_in cli_addr) {
 	FILE *fp;
-	fp = fopen(filename, "wb");
 
-	unsigned short opCode = 4;
-	unsigned short blockNum = 1;
-	char dataBuf[DATA_SIZE];
-	socklen_t cli_size = sizeof(cli_addr);
+	//unsigned short opCode = 4;
+//	unsigned short blockNum = 1;
+//	char dataBuf[DATA_SIZE];
+//	socklen_t cli_size = sizeof(cli_addr);
 
-	sendACK(blockNum, opCode, sockfd);
+	//sendACK(blockNum, opCode, sockfd);
 
-	// wait for data packet from client
-	recvfrom(sockfd, dataBuf, DATA_SIZE, 0, (struct sockaddr*)&cli_addr,
-	         &cli_size);	
+	int data_sock = socket(AF_INET, SOCK_DGRAM, 0);
 
-	// processDataPacket(sockfd, cli_addr, dataBuf, filename);
+	text_mode_transfer(fp, data_sock, cli_addr);
+
+
+	// file transfer completed, clear transfer buffer
+	//memset(buffer, 0, BUFSIZE);
+
+	// close source file
+	fclose(fp);
+
+	// shutdown transfer socket
+	shutdown(data_sock, SHUT_RDWR);
+
+	// close transfer socket
+	close(data_sock);
+
+
+	//processDataPacket(dataBuf, filename, blockNum, sockfd);
 }
 
 int main(int argc, char *argv[]) {
@@ -178,15 +335,16 @@ int main(int argc, char *argv[]) {
 		switch (opCodeRcv) {
 		case 1:
 			printf("Received RRQ packet from client\n");
-			printf("Opcode: %p\n", opCodeRcv);
+			printf("Opcode: %d\n", opCodeRcv);
 			printf("File name received: %s\n", fileNameRcv);
 			processRRQ(sockfd, fileNameRcv, cli_addr);
 			break;
 		case 2: 
 			printf("Received WRQ packet from client\n");
-			printf("Opcode: %p\n", opCodeRcv);
+			printf("Opcode: %d\n", opCodeRcv);
 			printf("File name received: %s\n", fileNameRcv);
 			processWRQ(sockfd, fileNameRcv, cli_addr);
+
 			break;
 		case 3:
 			sendDataPacket(blockNum, dataPtrRcv, sockfd, cli_addr);
@@ -198,7 +356,7 @@ int main(int argc, char *argv[]) {
 			// ERROR
 			break;
 		default:
-			printf("[ERROR] Invalid op code: %p\n", opCodeRcv);
+			printf("[ERROR] Invalid op code: %d\n", opCodeRcv);
 			break;
 		}
 		printf("----------------------------------------------------------\n");
